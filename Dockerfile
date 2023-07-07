@@ -136,7 +136,7 @@ RUN   cd flex-2.5.39 \
   &&  mv temp Makefile.am \
   &&  grep -vE ' *doc *\\ *' < Makefile.in > temp \
   &&  mv temp Makefile.in \
-  &&  ./configure --enable-static LDFLAGS=--static CC=$CC
+  &&  ./configure --enable-static LDFLAGS=--static CC=$CC RANLIB=$TOOLSBIN/ranlib
 
 RUN   cd flex-2.5.39 \
   &&  make \
