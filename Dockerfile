@@ -7,12 +7,14 @@ ENV CXX /i486-musl-cross/bin/i486-linux-musl-g++
 ENV CCBIN /i486-musl-cross/bin
 ENV TOOLSBIN /i486-musl-cross/i486-linux-musl/bin
 
+
 #make-4.1 uses OLDGNU tar format that busybox doesn't support, use our own tar
 # alternative: https://sourceforge.net/projects/s-tar/files/
 COPY sltar.c sltar.c
 # alternative to make-4.1.tar.bz2: http://fossies.org/linux/privat/bmake-20141111.zip
+COPY packages/make-4.2.1.tar.bz2 make-4.2.1.tar.bz2
 RUN   $CC sltar.c -DVERSION="\"9000\"" -static -o sltar \
-  &&  curl "http://ftp.gnu.org/gnu/make/make-4.2.1.tar.bz2" | bunzip2 | ./sltar x \
+  &&  bunzip2 < make-4.2.1.tar.bz2 | ./sltar x \
   &&  ( \
             cd make-4.2.1 \
         &&  ./configure PATH=$TOOLSBIN:$CCBIN:$PATH CC="$CC" LDFLAGS="-static" AR=$TOOLSBIN/ar RANLIB=$TOOLSBIN/ranlib \
@@ -20,13 +22,13 @@ RUN   $CC sltar.c -DVERSION="\"9000\"" -static -o sltar \
       )
 COPY ./patchelf-0.9 patchelf
 RUN cd patchelf && ./configure LDFLAGS=-static
-RUN cd patchelf/src; $TOOLSBIN/../lib/libc.so /make-4.2.1/make; cp patchelf /usr/bin
+RUN cd patchelf/src; $TOOLSBIN/../lib/libc.so /make-4.2.1/make MAKE="$TOOLSBIN/../lib/libc.so /make-4.2.1/make" AUTOMAKE=: AUTOCONF=:; cp patchelf /usr/bin
 RUN patchelf --set-interpreter $TOOLSBIN/../lib/libc.so /make-4.2.1/make
 RUN cd /make-4.2.1; cp ./make /usr/bin/make
 
 ENV PATH /usr/local/bin:$PATH
-
-RUN   curl http://www.nasm.us/pub/nasm/releasebuilds/2.11.08/nasm-2.11.08.tar.xz | unxz | tar x \
+COPY packages/nasm-2.11.08.tar.xz nasm-2.11.08.tar.xz
+RUN   unxz < nasm-2.11.08.tar.xz | tar x \
   &&  ( \
             cd nasm-2.11.08 \
         &&  ./configure LDFLAGS="-static" CC=$CC \
@@ -35,9 +37,9 @@ RUN   curl http://www.nasm.us/pub/nasm/releasebuilds/2.11.08/nasm-2.11.08.tar.xz
       ) \
   &&  rm -rf nasm-2.11.08 \
   &&  nasm; if [[ $? != 1 ]]; then echo "no nasm"; exit 1; fi
-
-RUN   curl https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-6.03.tar.xz | unxz | tar x \
-  &&  curl -o /usr/bin/perl http://staticperl.schmorp.de/bigperl.bin \
+COPY packages/syslinux-6.03.tar.xz syslinux-6.03.tar.xz
+COPY packages/bigperl.bin /usr/bin/perl
+RUN  unxz < syslinux-6.03.tar.xz | tar x \
   &&  chmod +x /usr/bin/perl
 # isolinux.bin and ldlinux.c32 already exist here... this is why building is commented out
 #RUN FILE=$(find . -name "isolinux.bin" -print); if [[ "$FILE" != "" ]]; then echo -e "found\n$FILE"; else echo "didn't find file"; exit 1; fi
@@ -53,8 +55,8 @@ RUN   curl https://www.kernel.org/pub/linux/utils/boot/syslinux/syslinux-6.03.ta
 #  [HOSTCC] util/zbin
 #make[4]: gcc: Command not found
 #RUN make -C syslinux-6.03 bios PATH=/x86_64-linux-musl/x86_64-linux-musl/bin:$PATH CC=/x86_64-linux-musl/bin/x86_64-linux-musl-gcc
-
-RUN   curl -L http://sourceforge.net/projects/libuuid/files/libuuid-1.0.3.tar.gz/download | gunzip | /sltar x \
+COPY packages/libuuid-1.0.3.tar.gz libuuid-1.0.3.tar.gz
+RUN   gunzip < libuuid-1.0.3.tar.gz | /sltar x \
   &&  ( \
           cd libuuid-1.0.3 \
       &&  ./configure \
@@ -70,6 +72,7 @@ RUN   curl -L http://sourceforge.net/projects/libuuid/files/libuuid-1.0.3.tar.gz
         install \
         AUTOCONF=: AUTOHEADER=: AUTOMAKE=: ACLOCAL=: \
   &&  rm -rf libuuid-1.0.3
+
 
 RUN   make -C syslinux-6.03 \
         install \
@@ -91,7 +94,8 @@ RUN   make -C syslinux-6.03 \
 #  &&  make defconfig \
 #  &&  rm /usr/bin/cc
 
-RUN curl http://invisible-island.net/datafiles/release/byacc.tar.gz | gunzip | tar x
+COPY packages/byacc.tar.gz byacc.tar.gz
+RUN  gunzip < byacc.tar.gz | tar x
 RUN   (     cd byacc* \
         &&  ./configure \
             LDFLAGS=-static \
@@ -103,7 +107,8 @@ RUN   (     cd byacc* \
       ) \
   &&  rm -rf byacc*
 
-RUN   curl http://ftp.gnu.org/gnu/m4/m4-1.4.17.tar.xz | unxz | tar x \
+COPY packages/m4-1.4.17.tar.xz m4-1.4.17.tar.xz
+RUN  unxz < m4-1.4.17.tar.xz | tar x \
   &&  ( \
             cd m4-1.4.17 \
         &&  ./configure \
@@ -117,8 +122,9 @@ RUN   curl http://ftp.gnu.org/gnu/m4/m4-1.4.17.tar.xz | unxz | tar x \
       ) \
   &&  rm -rf m4-1.4.17
 
+COPY packages/flex-2.5.39.tar.xz flex-2.5.39.tar.xz
 # alternative for this method: a zip file: http://fossies.org/linux/misc/flex-2.5.39.zip
-RUN curl -L http://sourceforge.net/projects/flex/files/flex-2.5.39.tar.xz/download | unxz | /sltar x
+RUN unxz < flex-2.5.39.tar.xz | /sltar x
 
 ## we can extract this with correct mtimes, if using sltar instead of cpio above (github uses the new tar format) (we need correct mtimes or we'd need autotools):
 #RUN curl -L https://github.com/westes/flex/archive/flex-2.5.39.tar.gz | gunzip | tar x
@@ -147,7 +153,8 @@ RUN   ( \
       ) \
   &&  rm -rf flex-2.5.39
 
-RUN   curl -L http://download.savannah.gnu.org/releases/lzip/lunzip/lunzip-1.9.tar.gz | gunzip | tar x \
+COPY packages/lunzip-1.9.tar.gz lunzip-1.9.tar.gz
+RUN  gunzip < lunzip-1.9.tar.gz | tar x \
   &&  ( \
             cd lunzip-1.9 \
         &&  ./configure \
@@ -160,7 +167,8 @@ RUN   curl -L http://download.savannah.gnu.org/releases/lzip/lunzip/lunzip-1.9.t
       ) \
   &&  rm -rf lunzip-1.9
 
-RUN   curl  http://ftp.halifax.rwth-aachen.de/gnu/ed/ed-1.11.tar.lz | lunzip | tar x \
+COPY packages/ed-1.11.tar.lz ed-1.11.tar.lz
+RUN  lunzip < ed-1.11.tar.lz | tar x \
   &&  ( \
             cd ed-1.11 \
         &&  ./configure \
@@ -173,7 +181,8 @@ RUN   curl  http://ftp.halifax.rwth-aachen.de/gnu/ed/ed-1.11.tar.lz | lunzip | t
       ) \
   &&  rm -rf ed-1.11
 
-RUN   curl http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2 | bunzip2 | /sltar x \
+COPY packages/bc-1.06.95.tar.bz2 bc-1.06.95.tar.bz2
+RUN  bunzip2 < bc-1.06.95.tar.bz2 | /sltar x \
   &&  ( \
             cd bc-1.06.95 \
         &&  ./configure \
@@ -204,10 +213,12 @@ RUN   curl http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2 | bunzip2 | /sltar x \
 #      ) \
 #  &&  rm -rf toybox-0.5.2
 
-RUN curl -L http://sourceforge.net/projects/s-make/files/smake-1.2.5.tar.bz2/download | bunzip2 | tar x
+COPY packages/smake-1.2.5.tar.gz smake-1.2.5.tar.gz
+RUN gunzip < smake-1.2.5.tar.gz | tar x
 # make bootstrap smake:
 RUN   cd smake-1.2.5/psmake \
-  &&  LDFLAGS=-static CC=$CC ./MAKE-all
+  &&  export MAKE=make && \
+  LDFLAGS=-static CC=$CC ./MAKE-all
 
 #RUN smake-1.2.4/psmake/smake; if [[ $? != 1 ]]; then echo "no bootstrap smake"; exit 1; fi
 #this ought to work, but smake can't detect the architecture correctly like this, i think it may be parsing the compiler path:
@@ -227,8 +238,10 @@ RUN   ( \
   &&  rm -rf smake-1.2.5 \
   &&  /opt/schily/bin/smake; if [[ $? != 1 ]]; then echo "no smake"; exit 1; fi
 
+
+COPY packages/bash-4.3.30.tar.gz bash-4.3.30.tar.gz
 # needed for linux
-RUN  curl http://ftp.gnu.org/gnu/bash/bash-4.3.30.tar.gz | gunzip | tar x \
+RUN  gunzip < bash-4.3.30.tar.gz | tar x \
   &&  ( \
             cd bash-4.3.30 \
          && ./configure \
@@ -246,8 +259,8 @@ RUN  curl http://ftp.gnu.org/gnu/bash/bash-4.3.30.tar.gz | gunzip | tar x \
   &&  rm -rf bash-4.3.30 \
   &&  rm -r share
 
-RUN   curl -L "http://sourceforge.net/projects/cdrtools/files/alpha/cdrtools-3.02a07.tar.bz2/download" -o cdrtools.tar.bz2
-RUN   cat cdrtools.tar.bz2 | bunzip2 | tar x \
+COPY packages/cdrtools-3.02a09.tar.bz2 cdrtools.tar.bz2
+RUN    bunzip2 < cdrtools.tar.bz2 | tar x \
   &&  PATH=$CCBIN:$PATH /opt/schily/bin/smake -C cdrtools-3.02 CC_COM=$CC CCOM=gcc LDOPTS=-static
 #  &&  rm -rf cdrtools-3.02 \
 RUN cd cdrtools-3.02/mkisofs; for i in ../libs/x86_64-linux-gcc/*.a; do $TOOLSBIN/ranlib $i; done
@@ -257,7 +270,8 @@ RUN   /opt/schily/bin/mkisofs; if [[ $? != 1 ]]; then echo "no mkisofs"; exit 1;
 
 COPY config-3.17.8 .config
 COPY isolinux.cfg CD_root/isolinux/
-RUN curl https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.1.39.tar.xz | unxz | tar x \
+COPY packages/linux-4.1.39.tar.xz linux-4.1.39.tar.xz
+RUN  unxz < linux-4.1.39.tar.xz | tar x \
   &&  echo -e "#!/bin/sh\n$CC -static \$@" > /usr/bin/gcc \
   &&  chmod +x /usr/bin/gcc \
   &&  ( \
@@ -276,7 +290,8 @@ RUN curl https://cdn.kernel.org/pub/linux/kernel/v4.x/linux-4.1.39.tar.xz | unxz
 
 # CFLAGS and not LDFLAGS cause the example on the toybox website uses it like this:
 # RUN   curl http://landley.net/toybox/downloads/toybox-0.5.2.tar.gz | gunzip | tar x \
-RUN   curl -L https://github.com/landley/toybox/archive/be3e318a591be62e8f670b8d78a0a2716eb78510.tar.gz | gunzip | tar x \
+COPY packages/toybox-be3e318a591be62e8f670b8d78a0a2716eb78510.tar.gz toybox.tar.gz
+RUN  gunzip < toybox.tar.gz | tar x \
   &&  ( \
            cd toybox-be3e318a591be62e8f670b8d78a0a2716eb78510 \
         && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/cc \
@@ -299,7 +314,8 @@ RUN   curl -L https://github.com/landley/toybox/archive/be3e318a591be62e8f670b8d
   &&  rm -rf toybox-be3e318a591be62e8f670b8d78a0a2716eb78510
 
 #TODO fix prefix here:
-RUN   curl http://ftp.gnu.org/gnu/bash/bash-4.3.30.tar.gz | gunzip | tar x \
+COPY packages/bash-4.3.30.tar.gz bash-4.3.30.tar.gz
+RUN  gunzip < bash-4.3.30.tar.gz | tar x \
   &&  ( \
              cd bash-4.3.30 \
          &&  ./configure \
@@ -319,7 +335,8 @@ RUN   curl http://ftp.gnu.org/gnu/bash/bash-4.3.30.tar.gz | gunzip | tar x \
       ) \
   &&  rm -rf bash-4.3.30
 
-RUN  curl -L http://www.busybox.net/downloads/busybox-1.26.2.tar.bz2 | bunzip2 | tar x \
+COPY packages/busybox-1.26.2.tar.bz2 busybox-1.26.2.tar.bz2
+RUN   bunzip2 < busybox-1.26.2.tar.bz2 | tar x \
   && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/gcc \
   && chmod +x /usr/bin/gcc
 COPY busybox-1.23.1-config-only-switchroot /busybox-1.26.2/.config
@@ -341,16 +358,17 @@ RUN  ( \
 #RUN  cd cpio-2.11; ./configure LDFLAGS=-static CC=/x86_64-linux-musl/bin/x86_64-linux-musl-gcc
 #RUN  cd cpio-2.11; PATH=/x86_64-linux-musl/x86_64-linux-musl/bin:$PATH make
 #RUN  cd cpio-2.11; make install
-RUN   curl http://ftp.gnu.org/gnu/cpio/cpio-2.12.tar.gz | gunzip | /sltar x \
+COPY packages/cpio-2.12.tar.bz2 cpio-2.12.tar.bz2
+RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
   &&  ( \
             cd cpio-2.12 \
         &&  touch aclocal.m4 configure \
-        &&  ./configure LDFLAGS=-static CC=$CC \
-        &&  PATH=$CCBIN:$PATH make \
+        &&  ./configure LDFLAGS=-static CC=$CC AUTOCONF=: AUTOHEADER=: AUTOMAKE=: AR=$TOOLSBIN/ar RANLIB=$TOOLSBIN/ranlib \
+        &&  PATH=$CCBIN:$PATH make AUTOCONF=: AUTOHEADER=: AUTOMAKE=:  \
         &&  make install \
       ) \
-  &&  rm -rf cpio-2.12 \
-  &&  cpio; if [[ $? != 1 ]]; then echo "no cpio"; exit 1; fi
+  &&  rm -rf cpio-2.12   \
+  && cpio;if [[ $? != 2 ]]; then echo "no cpio"; exit 1; fi
 
 # remove bash locale stuff
 RUN rm -rv initramfs/share
