@@ -197,21 +197,6 @@ RUN  bunzip2 < bc-1.06.95.tar.bz2 | /sltar x \
       ) \
   &&  rm -rf bc-1.06.95
 
-# these were tested only with glibc (official gcc docker):
-#RUN python -c "import urllib; urllib.urlretrieve('http://www.busybox.net/downloads/binaries/1.21.1/busybox-i486','initramfs/busybox-i486')" && chmod +x initramfs/busybox-i486
-#RUN python -c "import urllib; urllib.urlretrieve('http://download.savannah.gnu.org/releases/tinycc/tcc-0.9.26.tar.bz2','/dev/stdout')" | tar jx && (cd tcc-0.9.26 && ./configure --enable-cross && make i386-tcc && make install) && rm -rf tcc-0.9.26
-
-# this is for building toybox with tcc:
-#RUN   curl http://landley.net/toybox/downloads/toybox-0.5.2.tar.gz | gunzip | tar x \
-#  &&  ( \
-#            cd toybox-0.5.2 \
-#        &&  sed -i -re 's/-Wl,--as-needed//' scripts/make.sh \
-#        &&  ln -s `which gcc` /usr/bin/cc \
-#        &&  make defconfig \
-#        &&  rm /usr/bin/cc \
-#        &&  LDOPTIMIZE=" " CC="tcc" CFLAGS="-static -m32" ./scripts/make.sh \
-#      ) \
-#  &&  rm -rf toybox-0.5.2
 
 COPY packages/smake-1.2.5.tar.gz smake-1.2.5.tar.gz
 RUN gunzip < smake-1.2.5.tar.gz | tar x
@@ -264,9 +249,34 @@ RUN    bunzip2 < cdrtools.tar.bz2 | tar x \
   &&  PATH=$CCBIN:$PATH /opt/schily/bin/smake -C cdrtools-3.02 CC_COM=$CC CCOM=gcc LDOPTS=-static
 #  &&  rm -rf cdrtools-3.02 \
 RUN cd cdrtools-3.02/mkisofs; for i in ../libs/x86_64-linux-gcc/*.a; do $TOOLSBIN/ranlib $i; done
-RUN cd cdrtools-3.02/mkisofs; $CC -o OBJ/x86_64-linux-gcc/mkisofs OBJ/x86_64-linux-gcc/mkisofs.o OBJ/x86_64-linux-gcc/tree.o OBJ/x86_64-linux-gcc/write.o OBJ/x86_64-linux-gcc/hash.o OBJ/x86_64-linux-gcc/rock.o OBJ/x86_64-linux-gcc/inode.o OBJ/x86_64-linux-gcc/udf.o OBJ/x86_64-linux-gcc/multi.o  OBJ/x86_64-linux-gcc/joliet.o OBJ/x86_64-linux-gcc/match.o OBJ/x86_64-linux-gcc/name.o OBJ/x86_64-linux-gcc/eltorito.o OBJ/x86_64-linux-gcc/boot.o OBJ/x86_64-linux-gcc/isonum.o  OBJ/x86_64-linux-gcc/scsi.o  OBJ/x86_64-linux-gcc/apple.o OBJ/x86_64-linux-gcc/volume.o OBJ/x86_64-linux-gcc/desktop.o OBJ/x86_64-linux-gcc/mac_label.o OBJ/x86_64-linux-gcc/stream.o  OBJ/x86_64-linux-gcc/ifo_read.o OBJ/x86_64-linux-gcc/dvd_file.o OBJ/x86_64-linux-gcc/dvd_reader.o  OBJ/x86_64-linux-gcc/walk.o  -static  -lhfs -lfile -lsiconv -lscgcmd -lrscg -lscg  -lcdrdeflt -ldeflt  -lfind -lmdigest -lschily -L../libs/x86_64-linux-gcc/
+RUN cd cdrtools-3.02/mkisofs; \
+    $CC -o OBJ/x86_64-linux-gcc/mkisofs OBJ/x86_64-linux-gcc/mkisofs.o OBJ/x86_64-linux-gcc/tree.o \
+    OBJ/x86_64-linux-gcc/write.o OBJ/x86_64-linux-gcc/hash.o OBJ/x86_64-linux-gcc/rock.o \
+    OBJ/x86_64-linux-gcc/inode.o OBJ/x86_64-linux-gcc/udf.o OBJ/x86_64-linux-gcc/multi.o  \
+    OBJ/x86_64-linux-gcc/joliet.o OBJ/x86_64-linux-gcc/match.o OBJ/x86_64-linux-gcc/name.o \
+    OBJ/x86_64-linux-gcc/eltorito.o OBJ/x86_64-linux-gcc/boot.o OBJ/x86_64-linux-gcc/isonum.o  \
+    OBJ/x86_64-linux-gcc/scsi.o  OBJ/x86_64-linux-gcc/apple.o OBJ/x86_64-linux-gcc/volume.o \
+    OBJ/x86_64-linux-gcc/desktop.o OBJ/x86_64-linux-gcc/mac_label.o OBJ/x86_64-linux-gcc/stream.o  \
+    OBJ/x86_64-linux-gcc/ifo_read.o OBJ/x86_64-linux-gcc/dvd_file.o OBJ/x86_64-linux-gcc/dvd_reader.o  \
+    OBJ/x86_64-linux-gcc/walk.o  -static  -lhfs -lfile -lsiconv -lscgcmd -lrscg -lscg  -lcdrdeflt -ldeflt  \
+    -lfind -lmdigest -lschily -L../libs/x86_64-linux-gcc/
 RUN   PATH=$CCBIN:$PATH /opt/schily/bin/smake -C cdrtools-3.02 install CC_COM=$CC CCOM=gcc LDOPTX=-static
 RUN   /opt/schily/bin/mkisofs; if [[ $? != 1 ]]; then echo "no mkisofs"; exit 1; fi
+
+COPY packages/cpio-2.12.tar.bz2 cpio-2.12.tar.bz2
+RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
+  &&  ( \
+            cd cpio-2.12 \
+        &&  touch aclocal.m4 configure \
+        &&  ./configure LDFLAGS=-static CC=$CC AUTOCONF=: AUTOHEADER=: AUTOMAKE=: AR=$TOOLSBIN/ar RANLIB=$TOOLSBIN/ranlib \
+        &&  PATH=$CCBIN:$PATH make AUTOCONF=: AUTOHEADER=: AUTOMAKE=:  \
+        &&  make install \
+      ) \
+  &&  rm -rf cpio-2.12   \
+  && cpio;if [[ $? != 2 ]]; then echo "no cpio"; exit 1; fi
+
+#########################################################################################################################################################
+
 
 COPY config-3.17.8 .config
 COPY isolinux.cfg CD_root/isolinux/
@@ -283,10 +293,6 @@ RUN  unxz < linux-4.1.39.tar.xz | tar x \
       ) \
   &&  rm -rf linux-4.1.39 \
   &&  rm /usr/bin/gcc
-#without bash, making would fail with this error:
-#  MKCAP   arch/x86/kernel/cpu/capflags.c
-#./arch/x86/kernel/cpu/mkcapflags.sh: line 9: syntax error: unexpected "("
-#COPY 26.bzImage CD_root/
 
 # CFLAGS and not LDFLAGS cause the example on the toybox website uses it like this:
 # RUN   curl http://landley.net/toybox/downloads/toybox-0.5.2.tar.gz | gunzip | tar x \
@@ -354,21 +360,6 @@ RUN  ( \
      ) \
  &&  rm -rf busybox-1.26.2 /usr/bin/gcc
 
-#RUN  curl http://ftp.gnu.org/gnu/cpio/cpio-2.11.shar.gz | gunzip | sh
-#RUN  cd cpio-2.11; ./configure LDFLAGS=-static CC=/x86_64-linux-musl/bin/x86_64-linux-musl-gcc
-#RUN  cd cpio-2.11; PATH=/x86_64-linux-musl/x86_64-linux-musl/bin:$PATH make
-#RUN  cd cpio-2.11; make install
-COPY packages/cpio-2.12.tar.bz2 cpio-2.12.tar.bz2
-RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
-  &&  ( \
-            cd cpio-2.12 \
-        &&  touch aclocal.m4 configure \
-        &&  ./configure LDFLAGS=-static CC=$CC AUTOCONF=: AUTOHEADER=: AUTOMAKE=: AR=$TOOLSBIN/ar RANLIB=$TOOLSBIN/ranlib \
-        &&  PATH=$CCBIN:$PATH make AUTOCONF=: AUTOHEADER=: AUTOMAKE=:  \
-        &&  make install \
-      ) \
-  &&  rm -rf cpio-2.12   \
-  && cpio;if [[ $? != 2 ]]; then echo "no cpio"; exit 1; fi
 
 # remove bash locale stuff
 RUN rm -rv initramfs/share
