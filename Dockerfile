@@ -277,7 +277,6 @@ RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
 
 #########################################################################################################################################################
 
-
 COPY config-3.17.8 .config
 COPY isolinux.cfg CD_root/isolinux/
 COPY packages/linux-4.1.39.tar.xz linux-4.1.39.tar.xz
@@ -294,30 +293,7 @@ RUN  unxz < linux-4.1.39.tar.xz | tar x \
   &&  rm -rf linux-4.1.39 \
   &&  rm /usr/bin/gcc
 
-# CFLAGS and not LDFLAGS cause the example on the toybox website uses it like this:
-# RUN   curl http://landley.net/toybox/downloads/toybox-0.5.2.tar.gz | gunzip | tar x \
-COPY packages/toybox-be3e318a591be62e8f670b8d78a0a2716eb78510.tar.gz toybox.tar.gz
-RUN  gunzip < toybox.tar.gz | tar x \
-  &&  ( \
-           cd toybox-be3e318a591be62e8f670b8d78a0a2716eb78510 \
-        && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/cc \
-        && chmod +x /usr/bin/cc \
-        && make defconfig \
-        && rm /usr/bin/cc \
-      ) \
-  &&  ( \
-           cd toybox-be3e318a591be62e8f670b8d78a0a2716eb78510 \
-        && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/cc \
-        && chmod +x /usr/bin/cc \
-        && PATH=$CCBIN:$PATH \
-           CFLAGS=-static \
-           CROSS_COMPILE= \
-           PREFIX=/initramfs \
-           make toybox install V=1 \
-      ) \
-  &&  ./toybox-be3e318a591be62e8f670b8d78a0a2716eb78510/toybox; if [[ $? != 0 ]]; then echo "no toybox: exit code: $?"; exit 1; fi \
-  &&  rm /usr/bin/cc \
-  &&  rm -rf toybox-be3e318a591be62e8f670b8d78a0a2716eb78510
+
 
 #TODO fix prefix here:
 COPY packages/bash-4.3.30.tar.gz bash-4.3.30.tar.gz
@@ -342,10 +318,10 @@ RUN  gunzip < bash-4.3.30.tar.gz | tar x \
   &&  rm -rf bash-4.3.30
 
 COPY packages/busybox-1.26.2.tar.bz2 busybox-1.26.2.tar.bz2
-RUN   bunzip2 < busybox-1.26.2.tar.bz2 | tar x \
+RUN  bunzip2 < busybox-1.26.2.tar.bz2 | tar x \
   && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/gcc \
   && chmod +x /usr/bin/gcc
-COPY busybox-1.23.1-config-only-switchroot /busybox-1.26.2/.config
+COPY busybox-1.23.1-config /busybox-1.26.2/.config
 RUN  ( \
           cd busybox-1.26.2 && sed -i -re '295s/-1/1/' include/libbb.h \
        && PATH=$TOOLSBIN:$PATH \
@@ -356,9 +332,11 @@ RUN  ( \
           EXTRA_CFLAGS=-m32 \
           EXTRA_LDFLAGS=-m32 \
           HOSTCFLAGS="-D_GNU_SOURCE" \
-       && ln busybox ../initramfs/busybox-i486 \
-     ) \
- &&  rm -rf busybox-1.26.2 /usr/bin/gcc
+       && make install\
+) 
+
+RUN mv /busybox-1.26.2/_install/bin/* /initramfs/bin/
+RUN mv /busybox-1.26.2/_install/sbin /initramfs/
 
 
 # remove bash locale stuff
@@ -378,7 +356,7 @@ RUN  ( \
        -l \
        -relaxed-filenames \
        -no-iso-translate \
-       -o 9pboot.iso \
+       -o blockless.iso \
        -b isolinux/isolinux.bin \
        -c isolinux/boot.cat \
        -no-emul-boot \
