@@ -1,11 +1,9 @@
-#!/bin/bash -ex
-#/busybox-i486 mkdir -p bin usr/sbin usr/bin sbin
-mount -a
-mount --move sys host9p/sys
-mount --move proc host9p/proc
-#mkdir writable upper work
-#/busybox-i486 mount -t overlay -olowerdir=/host9p,upperdir=/upper,workdir=/work overlayfs writable
-#mkdir writable/fsroot/dev
-#mount --move dev writable/fsroot/dev
-mount --move dev host9p/dev
-exec /busybox-i486 host9p linuxrc # switch_root
+#!/bin/sh
+# devtmpfs does not get automounted for initramfs
+/bin/mount -t devtmpfs devtmpfs /dev
+ls /dev
+exec 0</dev/console
+exec 1>/dev/console
+exec 2>/dev/console
+
+exec /sbin/init "$@"
