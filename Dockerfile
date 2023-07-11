@@ -211,13 +211,13 @@ RUN   cd smake-1.2.5/psmake \
 
 RUN   ( \
             cd smake-1.2.5 \
-#        &&  mkdir -p ./RULES/cc-/i486-musl-cross/bin/ ./RULES/x86_64-linux-/i486-musl-cross/bin incs/i486-linux-/i486-musl-cross/bin/i486-linux-musl-gcc/ \
-#        &&  touch ./RULES/cc-/i486-musl-cross/bin/i486-linux-musl-gcc.rul \
-#        &&  touch incs/i486-linux-/i486-musl-cross/bin/i486-linux-musl-gcc/rules.cnf \
         &&  sed -i.bak -re "67 s,^.*$,LDFLAGS='\$(LDOPTS)' $PWD/autoconf/configure \$(CONFFLAGS),g" RULES/rules.cnf \
         &&  make PATH=$CCBIN:$PATH CCOM=gcc CC_COM=$CC LDOPTS="-static" \
         &&  $TOOLSBIN/ranlib libs/x86_64-linux-gcc/libschily.a \
-        &&  (cd smake; $CC -Llibs/x86_64-linux-cc -o OBJ/x86_64-linux-gcc/smake OBJ/x86_64-linux-gcc/make.o OBJ/x86_64-linux-gcc/archconf.o OBJ/x86_64-linux-gcc/readfile.o OBJ/x86_64-linux-gcc/parse.o OBJ/x86_64-linux-gcc/update.o OBJ/x86_64-linux-gcc/rules.o  OBJ/x86_64-linux-gcc/job.o OBJ/x86_64-linux-gcc/memory.o -static -L../libs/x86_64-linux-gcc -lschily) \
+        &&  (cd smake; $CC -Llibs/x86_64-linux-cc -o OBJ/x86_64-linux-gcc/smake OBJ/x86_64-linux-gcc/make.o \
+        OBJ/x86_64-linux-gcc/archconf.o OBJ/x86_64-linux-gcc/readfile.o OBJ/x86_64-linux-gcc/parse.o \
+        OBJ/x86_64-linux-gcc/update.o OBJ/x86_64-linux-gcc/rules.o  OBJ/x86_64-linux-gcc/job.o OBJ/x86_64-linux-gcc/memory.o \
+        -static -L../libs/x86_64-linux-gcc -lschily) \
         &&  make install\
       ) \
   &&  rm -rf smake-1.2.5 \
@@ -275,27 +275,7 @@ RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
   &&  rm -rf cpio-2.12   \
   && cpio;if [[ $? != 2 ]]; then echo "no cpio"; exit 1; fi
 
-#########################################################################################################################################################
 
-COPY config-3.17.8 .config
-COPY isolinux.cfg CD_root/isolinux/
-COPY packages/linux-4.1.39.tar.xz linux-4.1.39.tar.xz
-RUN  unxz < linux-4.1.39.tar.xz | tar x \
-  &&  echo -e "#!/bin/sh\n$CC -static \$@" > /usr/bin/gcc \
-  &&  chmod +x /usr/bin/gcc \
-  &&  ( \
-            cd linux-4.1.39 \
-        &&  mv ../.config . \
-        &&  make oldconfig ARCH=i386 \
-        &&  make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH \
-        &&  ln arch/x86/boot/bzImage ../CD_root/bzImage \
-      ) \
-  &&  rm -rf linux-4.1.39 \
-  &&  rm /usr/bin/gcc
-
-
-
-#TODO fix prefix here:
 COPY packages/bash-4.3.30.tar.gz bash-4.3.30.tar.gz
 RUN  gunzip < bash-4.3.30.tar.gz | tar x \
   &&  ( \
@@ -316,6 +296,24 @@ RUN  gunzip < bash-4.3.30.tar.gz | tar x \
          &&  $TOOLSBIN/strip /initramfs/bin/bash \
       ) \
   &&  rm -rf bash-4.3.30
+#########################################################################################################################################################
+
+COPY config-3.17.8 .config
+COPY isolinux.cfg CD_root/isolinux/
+COPY packages/linux-4.1.39.tar.xz linux-4.1.39.tar.xz
+RUN  unxz < linux-4.1.39.tar.xz | tar x \
+  &&  echo -e "#!/bin/sh\n$CC -static \$@" > /usr/bin/gcc \
+  &&  chmod +x /usr/bin/gcc \
+  &&  ( \
+            cd linux-4.1.39 \
+        &&  mv ../.config . \
+        &&  make oldconfig ARCH=i386 \
+        &&  make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH \
+        &&  ln arch/x86/boot/bzImage ../CD_root/bzImage \
+      ) \
+  &&  rm -rf linux-4.1.39 \
+  &&  rm /usr/bin/gcc
+
 
 COPY packages/busybox-1.26.2.tar.bz2 busybox-1.26.2.tar.bz2
 RUN  bunzip2 < busybox-1.26.2.tar.bz2 | tar x \
@@ -332,12 +330,8 @@ RUN  ( \
           EXTRA_CFLAGS=-m32 \
           EXTRA_LDFLAGS=-m32 \
           HOSTCFLAGS="-D_GNU_SOURCE" \
-       && make install\
-) 
-
-RUN mv /busybox-1.26.2/_install/bin/* /initramfs/bin/
-RUN mv /busybox-1.26.2/_install/sbin /initramfs/
-
+       && make CONFIG_PREFIX=/initramfs install\
+) && cd /&& rm -rf busybox-1.26.2  && rm /usr/bin/gcc
 
 # remove bash locale stuff
 RUN rm -rv initramfs/share
