@@ -1,6 +1,4 @@
-
 all: mk_img
-
 
 mk_img:
 	docker build . -t blockless-img
