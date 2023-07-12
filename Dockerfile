@@ -25,6 +25,7 @@ RUN cd patchelf && ./configure LDFLAGS=-static
 RUN cd patchelf/src; $TOOLSBIN/../lib/libc.so /make-4.2.1/make MAKE="$TOOLSBIN/../lib/libc.so /make-4.2.1/make" AUTOMAKE=: AUTOCONF=:; cp patchelf /usr/bin
 RUN patchelf --set-interpreter $TOOLSBIN/../lib/libc.so /make-4.2.1/make
 RUN cd /make-4.2.1; cp ./make /usr/bin/make
+RUN rm -rf make-4.2.1.tar.bz2 /make-4.2.1
 
 ENV PATH /usr/local/bin:$PATH
 COPY packages/nasm-2.11.08.tar.xz nasm-2.11.08.tar.xz
@@ -35,26 +36,13 @@ RUN   unxz < nasm-2.11.08.tar.xz | tar x \
         &&  make \
         &&  make install \
       ) \
-  &&  rm -rf nasm-2.11.08 \
+  &&  rm -rf nasm-2.11.08 nasm-2.11.08.tar.xz\
   &&  nasm; if [[ $? != 1 ]]; then echo "no nasm"; exit 1; fi
 COPY packages/syslinux-6.03.tar.xz syslinux-6.03.tar.xz
 COPY packages/bigperl.bin /usr/bin/perl
 RUN  unxz < syslinux-6.03.tar.xz | tar x \
   &&  chmod +x /usr/bin/perl
-# isolinux.bin and ldlinux.c32 already exist here... this is why building is commented out
-#RUN FILE=$(find . -name "isolinux.bin" -print); if [[ "$FILE" != "" ]]; then echo -e "found\n$FILE"; else echo "didn't find file"; exit 1; fi
-#RUN FILE=$(find . -name "ldlinux.c32" -print); if [[ "$FILE" != "" ]]; then echo -e "found\n$FILE"; else echo "didn't find file"; exit 1; fi
-#partly works but disabled
-#RUN make -C syslinux-6.03 PATH=/x86_64-linux-musl/x86_64-linux-musl/bin:$PATH CC=/x86_64-linux-musl/bin/x86_64-linux-musl-gcc || true
 
-# works, disabled cause it's unnecessary
-#RUN (cd syslinux-6.03/bios/lzo && /x86_64-linux-musl/bin/x86_64-linux-musl-gcc -static -o prepcore prepcore.o lzo.a) && \
-#	make -C syslinux-6.03 com32 PATH=/x86_64-linux-musl/x86_64-linux-musl/bin:$PATH CC=/x86_64-linux-musl/bin/x86_64-linux-musl-gcc
-
-# results in errors:
-#  [HOSTCC] util/zbin
-#make[4]: gcc: Command not found
-#RUN make -C syslinux-6.03 bios PATH=/x86_64-linux-musl/x86_64-linux-musl/bin:$PATH CC=/x86_64-linux-musl/bin/x86_64-linux-musl-gcc
 COPY packages/libuuid-1.0.3.tar.gz libuuid-1.0.3.tar.gz
 RUN   gunzip < libuuid-1.0.3.tar.gz | /sltar x \
   &&  ( \
@@ -71,8 +59,7 @@ RUN   gunzip < libuuid-1.0.3.tar.gz | /sltar x \
   &&  make -C libuuid-1.0.3 \
         install \
         AUTOCONF=: AUTOHEADER=: AUTOMAKE=: ACLOCAL=: \
-  &&  rm -rf libuuid-1.0.3
-
+  &&  rm -rf libuuid-1.0.3 libuuid-1.0.3.tar.gz
 
 RUN   make -C syslinux-6.03 \
         install \
@@ -82,9 +69,7 @@ RUN   make -C syslinux-6.03 \
         RANLIB=$TOOLSBIN/ranlib \
         LD=$LD \
         OBJCOPY=$CCBIN/i486-linux-musl-objcopy \
-  &&  rm -rf syslinux-6.03 \
-  &&  rm /usr/bin/perl
-
+  &&  rm -rf syslinux-6.03 syslinux-6.03.tar.xz 
 # replace shebang to avoid using bash
 #RUN   curl http://landley.net/toybox/downloads/toybox-0.5.2.tar.gz | gunzip | tar x \
 #  &&  cd toybox-0.5.2 \
@@ -120,16 +105,11 @@ RUN  unxz < m4-1.4.17.tar.xz | tar x \
               PATH=$CCBIN:$PATH \
         &&  make install \
       ) \
-  &&  rm -rf m4-1.4.17
+  &&  rm -rf m4-1.4.17 m4-1.4.17.tar.xz
 
 COPY packages/flex-2.5.39.tar.xz flex-2.5.39.tar.xz
 # alternative for this method: a zip file: http://fossies.org/linux/misc/flex-2.5.39.zip
 RUN unxz < flex-2.5.39.tar.xz | /sltar x
-
-## we can extract this with correct mtimes, if using sltar instead of cpio above (github uses the new tar format) (we need correct mtimes or we'd need autotools):
-#RUN curl -L https://github.com/westes/flex/archive/flex-2.5.39.tar.gz | gunzip | tar x
-## move directory contents and overwrite (archive to keep mtimes)
-#RUN find flex-flex-2.5.39 -maxdepth 1 -mindepth 1 -exec cp -avrl "{}" /flex-2.5.39/ \; && rm -rf flex-flex-2.5.39
 
 RUN   cd flex-2.5.39 \
   &&  grep -vE ' *doc *\\ *' < Makefile.am > temp \
@@ -137,21 +117,18 @@ RUN   cd flex-2.5.39 \
   &&  grep -vE ' *doc *\\ *' < Makefile.in > temp \
   &&  mv temp Makefile.in \
   &&  ./configure --enable-static LDFLAGS=--static CC=$CC RANLIB=$TOOLSBIN/ranlib
-
 RUN   cd flex-2.5.39 \
   &&  make \
         PATH=$TOOLSBIN:$CCBIN:$PATH
-
 RUN   cd flex-2.5.39 \
   &&  ./flex; if [[ $? != 1 ]]; then ls -ld flex; exit 1; fi
-
 RUN   ( \
             cd flex-2.5.39 \
         &&  make \
               install \
               PATH=$CCBIN:$PATH \
       ) \
-  &&  rm -rf flex-2.5.39
+  &&  rm -rf flex-2.5.39 flex-2.5.39.tar.xz
 
 COPY packages/lunzip-1.9.tar.gz lunzip-1.9.tar.gz
 RUN  gunzip < lunzip-1.9.tar.gz | tar x \
@@ -165,7 +142,7 @@ RUN  gunzip < lunzip-1.9.tar.gz | tar x \
         &&  make \
         &&  make install \
       ) \
-  &&  rm -rf lunzip-1.9
+  &&  rm -rf lunzip-1.9 lunzip-1.9.tar.gz
 
 COPY packages/ed-1.11.tar.lz ed-1.11.tar.lz
 RUN  lunzip < ed-1.11.tar.lz | tar x \
@@ -179,7 +156,7 @@ RUN  lunzip < ed-1.11.tar.lz | tar x \
         &&  make \
         &&  make install \
       ) \
-  &&  rm -rf ed-1.11
+  &&  rm -rf ed-1.11 ed-1.11.tar.lz
 
 COPY packages/bc-1.06.95.tar.bz2 bc-1.06.95.tar.bz2
 RUN  bunzip2 < bc-1.06.95.tar.bz2 | /sltar x \
@@ -195,7 +172,7 @@ RUN  bunzip2 < bc-1.06.95.tar.bz2 | /sltar x \
               RANLIB=$TOOLSBIN/ranlib \
         &&  make install \
       ) \
-  &&  rm -rf bc-1.06.95
+  &&  rm -rf bc-1.06.95 bc-1.06.95.tar.bz2
 
 
 COPY packages/smake-1.2.5.tar.gz smake-1.2.5.tar.gz
@@ -204,10 +181,6 @@ RUN gunzip < smake-1.2.5.tar.gz | tar x
 RUN   cd smake-1.2.5/psmake \
   &&  export MAKE=make && \
   LDFLAGS=-static CC=$CC ./MAKE-all
-
-#RUN smake-1.2.4/psmake/smake; if [[ $? != 1 ]]; then echo "no bootstrap smake"; exit 1; fi
-#this ought to work, but smake can't detect the architecture correctly like this, i think it may be parsing the compiler path:
-#RUN cd smake-1.2.4 && sed -i '274i	echo $(C_ARCH)' RULES/rules1.top && sed -i '2iecho "$@"' conf/makeinc && ./psmake/smake -WW -DD -d -r all CCOM=/x86_64-linux-musl/bin/x86_64-musl-linux-gcc
 
 RUN   ( \
             cd smake-1.2.5 \
@@ -220,12 +193,11 @@ RUN   ( \
         -static -L../libs/x86_64-linux-gcc -lschily) \
         &&  make install\
       ) \
-  &&  rm -rf smake-1.2.5 \
+  &&  rm -rf smake-1.2.5 smake-1.2.5.tar.gz \
   &&  /opt/schily/bin/smake; if [[ $? != 1 ]]; then echo "no smake"; exit 1; fi
 
 
 COPY packages/bash-4.3.30.tar.gz bash-4.3.30.tar.gz
-# needed for linux
 RUN  gunzip < bash-4.3.30.tar.gz | tar x \
   &&  ( \
             cd bash-4.3.30 \
@@ -241,13 +213,12 @@ RUN  gunzip < bash-4.3.30.tar.gz | tar x \
               PATH=$CCBIN:$PATH \
          && make install\
       ) \
-  &&  rm -rf bash-4.3.30 \
+  &&  rm -rf bash-4.3.30 bash-4.3.30.tar.gz \
   &&  rm -r share
 
 COPY packages/cdrtools-3.02a09.tar.bz2 cdrtools.tar.bz2
 RUN    bunzip2 < cdrtools.tar.bz2 | tar x \
   &&  PATH=$CCBIN:$PATH /opt/schily/bin/smake -C cdrtools-3.02 CC_COM=$CC CCOM=gcc LDOPTS=-static
-#  &&  rm -rf cdrtools-3.02 \
 RUN cd cdrtools-3.02/mkisofs; for i in ../libs/x86_64-linux-gcc/*.a; do $TOOLSBIN/ranlib $i; done
 RUN cd cdrtools-3.02/mkisofs; \
     $CC -o OBJ/x86_64-linux-gcc/mkisofs OBJ/x86_64-linux-gcc/mkisofs.o OBJ/x86_64-linux-gcc/tree.o \
@@ -260,8 +231,9 @@ RUN cd cdrtools-3.02/mkisofs; \
     OBJ/x86_64-linux-gcc/ifo_read.o OBJ/x86_64-linux-gcc/dvd_file.o OBJ/x86_64-linux-gcc/dvd_reader.o  \
     OBJ/x86_64-linux-gcc/walk.o  -static  -lhfs -lfile -lsiconv -lscgcmd -lrscg -lscg  -lcdrdeflt -ldeflt  \
     -lfind -lmdigest -lschily -L../libs/x86_64-linux-gcc/
-RUN   PATH=$CCBIN:$PATH /opt/schily/bin/smake -C cdrtools-3.02 install CC_COM=$CC CCOM=gcc LDOPTX=-static
-RUN   /opt/schily/bin/mkisofs; if [[ $? != 1 ]]; then echo "no mkisofs"; exit 1; fi
+RUN  PATH=$CCBIN:$PATH /opt/schily/bin/smake -C cdrtools-3.02 install CC_COM=$CC CCOM=gcc LDOPTX=-static
+RUN  /opt/schily/bin/mkisofs; if [[ $? != 1 ]]; then echo "no mkisofs"; exit 1; fi
+RUN  cd / && rm  -rf cdrtools-3.02 cdrtools.tar.bz2
 
 COPY packages/cpio-2.12.tar.bz2 cpio-2.12.tar.bz2
 RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
@@ -272,7 +244,7 @@ RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
         &&  PATH=$CCBIN:$PATH make AUTOCONF=: AUTOHEADER=: AUTOMAKE=:  \
         &&  make install \
       ) \
-  &&  rm -rf cpio-2.12   \
+  &&  rm -rf cpio-2.12 cpio-2.12.tar.bz2   \
   && cpio;if [[ $? != 2 ]]; then echo "no cpio"; exit 1; fi
 
 
@@ -295,7 +267,7 @@ RUN  gunzip < bash-4.3.30.tar.gz | tar x \
          &&  make install DESTDIR=/initramfs \
          &&  $TOOLSBIN/strip /initramfs/bin/bash \
       ) \
-  &&  rm -rf bash-4.3.30
+  &&  rm -rf /bash-4.3.30 bash-4.3.30.tar.gz
 #########################################################################################################################################################
 
 COPY config-3.17.8 .config
