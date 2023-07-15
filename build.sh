@@ -22,11 +22,14 @@ make TGTARCH=i486 \
     HOSTCFLAGS="-D_GNU_SOURCE"
 make CONFIG_PREFIX=/initramfs install
 rm /usr/bin/gcc
+rm -rv /initramfs/share
+cp -rf /build/initramfs/* /initramfs/
+
 
 cd /initramfs
 find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz
 cd  /
-ln /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
+cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
 /opt/schily/bin/mkisofs \
     -allow-leading-dots \
     -allow-multidot \

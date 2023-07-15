@@ -5,6 +5,7 @@ mk_img:
 
 build: mk_img
 	mkdir build -p; 
+	cp initramfs build/ -rf
 	cp packages/linux-4.1.39.tar.xz build; 
 	cp packages/busybox-1.26.2.tar.bz2 build; 
 	cp busybox-1.23.1-config build/busybox.config; 
