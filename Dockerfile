@@ -6,7 +6,7 @@ ENV LD /i486-musl-cross/bin/i486-linux-musl-ld
 ENV CXX /i486-musl-cross/bin/i486-linux-musl-g++
 ENV CCBIN /i486-musl-cross/bin
 ENV TOOLSBIN /i486-musl-cross/i486-linux-musl/bin
-
+VOLUME /build
 
 #make-4.1 uses OLDGNU tar format that busybox doesn't support, use our own tar
 # alternative: https://sourceforge.net/projects/s-tar/files/
@@ -247,7 +247,7 @@ RUN    bunzip2 < cpio-2.12.tar.bz2 | tar x \
   &&  rm -rf cpio-2.12 cpio-2.12.tar.bz2   \
   && cpio;if [[ $? != 2 ]]; then echo "no cpio"; exit 1; fi
 
-
+COPY entry.sh entry.sh
 COPY packages/bash-4.3.30.tar.gz bash-4.3.30.tar.gz
 RUN  gunzip < bash-4.3.30.tar.gz | tar x \
   &&  ( \
@@ -268,63 +268,64 @@ RUN  gunzip < bash-4.3.30.tar.gz | tar x \
          &&  $TOOLSBIN/strip /initramfs/bin/bash \
       ) \
   &&  rm -rf /bash-4.3.30 bash-4.3.30.tar.gz
+
 #########################################################################################################################################################
-
-COPY config-3.17.8 .config
 COPY isolinux.cfg CD_root/isolinux/
-COPY packages/linux-4.1.39.tar.xz linux-4.1.39.tar.xz
-RUN  unxz < linux-4.1.39.tar.xz | tar x \
-  &&  echo -e "#!/bin/sh\n$CC -static \$@" > /usr/bin/gcc \
-  &&  chmod +x /usr/bin/gcc \
-  &&  ( \
-            cd linux-4.1.39 \
-        &&  mv ../.config . \
-        &&  make oldconfig ARCH=i386 \
-        &&  make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH \
-        &&  ln arch/x86/boot/bzImage ../CD_root/bzImage \
-      ) \
-  &&  rm -rf linux-4.1.39 \
-  &&  rm /usr/bin/gcc
+# COPY config-3.17.8 .config
+# COPY isolinux.cfg CD_root/isolinux/
+# COPY packages/linux-4.1.39.tar.xz linux-4.1.39.tar.xz
+# RUN  unxz < linux-4.1.39.tar.xz | tar x \
+#   &&  echo -e "#!/bin/sh\n$CC -static \$@" > /usr/bin/gcc \
+#   &&  chmod +x /usr/bin/gcc \
+#   &&  ( \
+#             cd linux-4.1.39 \
+#         &&  mv ../.config . \
+#         &&  make oldconfig ARCH=i386 \
+#         &&  make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH \
+#         &&  ln arch/x86/boot/bzImage ../CD_root/bzImage \
+#       ) \
+#   &&  rm -rf linux-4.1.39 \
+#   &&  rm /usr/bin/gcc
 
 
-COPY packages/busybox-1.26.2.tar.bz2 busybox-1.26.2.tar.bz2
-RUN  bunzip2 < busybox-1.26.2.tar.bz2 | tar x \
-  && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/gcc \
-  && chmod +x /usr/bin/gcc
-COPY busybox-1.23.1-config /busybox-1.26.2/.config
-RUN  ( \
-          cd busybox-1.26.2 && sed -i -re '295s/-1/1/' include/libbb.h \
-       && PATH=$TOOLSBIN:$PATH \
-       && make oldconfig \
-       && make \
-          TGTARCH=i486 \
-          LDFLAGS="--static" \
-          EXTRA_CFLAGS=-m32 \
-          EXTRA_LDFLAGS=-m32 \
-          HOSTCFLAGS="-D_GNU_SOURCE" \
-       && make CONFIG_PREFIX=/initramfs install\
-) && cd /&& rm -rf busybox-1.26.2  && rm /usr/bin/gcc
+# COPY packages/busybox-1.26.2.tar.bz2 busybox-1.26.2.tar.bz2
+# RUN  bunzip2 < busybox-1.26.2.tar.bz2 | tar x \
+#   && echo -e "#!/bin/sh\n/$CC -static \$@" > /usr/bin/gcc \
+#   && chmod +x /usr/bin/gcc
+# COPY busybox-1.23.1-config /busybox-1.26.2/.config
+# RUN  ( \
+#           cd busybox-1.26.2 && sed -i -re '295s/-1/1/' include/libbb.h \
+#        && PATH=$TOOLSBIN:$PATH \
+#        && make oldconfig \
+#        && make \
+#           TGTARCH=i486 \
+#           LDFLAGS="--static" \
+#           EXTRA_CFLAGS=-m32 \
+#           EXTRA_LDFLAGS=-m32 \
+#           HOSTCFLAGS="-D_GNU_SOURCE" \
+#        && make CONFIG_PREFIX=/initramfs install\
+# ) && cd /&& rm -rf busybox-1.26.2  && rm /usr/bin/gcc
 
-# remove bash locale stuff
-RUN rm -rv initramfs/share
+# # remove bash locale stuff
+# RUN rm -rv initramfs/share
 
-# copying into the container
-COPY initramfs initramfs/
+# # copying into the container
+# COPY initramfs initramfs/
 
-RUN  ( \
-          cd initramfs \
-       && find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz \
-     ) \
- &&  ln /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/ \
- &&  /opt/schily/bin/mkisofs \
-       -allow-leading-dots \
-       -allow-multidot \
-       -l \
-       -relaxed-filenames \
-       -no-iso-translate \
-       -o blockless.iso \
-       -b isolinux/isolinux.bin \
-       -c isolinux/boot.cat \
-       -no-emul-boot \
-       -boot-load-size 4 \
-       -boot-info-table CD_root
+# RUN  ( \
+#           cd initramfs \
+#        && find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz \
+#      ) \
+#  &&  ln /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/ \
+#  &&  /opt/schily/bin/mkisofs \
+#        -allow-leading-dots \
+#        -allow-multidot \
+#        -l \
+#        -relaxed-filenames \
+#        -no-iso-translate \
+#        -o blockless.iso \
+#        -b isolinux/isolinux.bin \
+#        -c isolinux/boot.cat \
+#        -no-emul-boot \
+#        -boot-load-size 4 \
+#        -boot-info-table CD_root
