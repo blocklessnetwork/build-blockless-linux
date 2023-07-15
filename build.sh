@@ -6,7 +6,7 @@ cd linux-4.1.39
 cp ../linux.config .config
 make oldconfig ARCH=i386 
 make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
-ln arch/x86/boot/bzImage /CD_root/bzImage 
+cp arch/x86/boot/bzImage /CD_root/bzImage 
 
 cd /build
 bunzip2 < busybox-1.26.2.tar.bz2 | tar x
