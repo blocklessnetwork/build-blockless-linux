@@ -6,7 +6,7 @@ cd linux-4.1.39
 cp ../linux.config .config
 make oldconfig ARCH=i386 
 make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
-ln arch/x86/boot/bzImage /CD_root/bzImage 
+cp arch/x86/boot/bzImage /CD_root/bzImage 
 
 cd /build
 bunzip2 < busybox-1.26.2.tar.bz2 | tar x
@@ -22,11 +22,14 @@ make TGTARCH=i486 \
     HOSTCFLAGS="-D_GNU_SOURCE"
 make CONFIG_PREFIX=/initramfs install
 rm /usr/bin/gcc
+rm -rv /initramfs/share
+cp -rf /build/initramfs/* /initramfs/
+
 
 cd /initramfs
 find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz
 cd  /
-ln /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
+cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
 /opt/schily/bin/mkisofs \
     -allow-leading-dots \
     -allow-multidot \
