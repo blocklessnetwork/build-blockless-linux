@@ -6,6 +6,7 @@ cd linux-4.1.39
 cp ../linux.config .config
 make oldconfig ARCH=i386 
 make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
+make INSTALL_MOD_PATH=/initramfs/ modules_install
 cp arch/x86/boot/bzImage /CD_root/bzImage 
 
 cd /build
@@ -25,7 +26,8 @@ rm /usr/bin/gcc
 rm -rv /initramfs/share
 cp -rf /build/initramfs/* /initramfs/
 
-
+mkdir /initramfs/proc -p
+mkdir /initramfs/tmp -p
 cd /initramfs
 find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz
 cd  /
