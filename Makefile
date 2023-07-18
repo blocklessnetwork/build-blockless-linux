@@ -1,7 +1,7 @@
 all: build
 
 mk_img:
-	docker build . -t blockless-img
+	docker pull joing/blockless-img:v1
 
 build: mk_img
 	mkdir build -p; 
@@ -11,7 +11,7 @@ build: mk_img
 	cp busybox-1.23.1-config build/busybox.config; 
 	cp config-3.17.8  build/linux.config; 
 	cp build.sh  build/; 
-	docker run -d -v `pwd`/build:/build --name blockless-img blockless-img bash entry.sh
+	docker run -d -v `pwd`/build:/build --name blockless-img joing/blockless-img:v1 bash entry.sh
 	docker exec  blockless-img bash /build/build.sh
 	docker cp blockless-img:blockless.iso .
 	docker stop blockless-img
