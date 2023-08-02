@@ -9,7 +9,7 @@ build: mk_img
 	cp packages/linux-4.1.39.tar.xz build; 
 	cp packages/busybox-1.26.2.tar.bz2 build; 
 	cp busybox-1.23.1-config build/busybox.config; 
-	cp config-3.17.8  build/linux.config; 
+	cp config-linux-4.1.39  build/linux.config; 
 	cp build.sh  build/; 
 	docker run -d -v `pwd`/build:/build --name blockless-img joing/blockless-img:v1 bash entry.sh
 	docker exec  blockless-img bash /build/build.sh
