@@ -5,8 +5,8 @@ unxz < linux-4.1.39.tar.xz | tar x
 cd linux-4.1.39 
 cp ../linux.config .config
 make oldconfig ARCH=i386 
-make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
-make INSTALL_MOD_PATH=/initramfs/ modules_install
+PATH=$TOOLSBIN:$CCBIN:$PATH make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
+PATH=$TOOLSBIN:$CCBIN:$PATH make INSTALL_MOD_PATH=/initramfs/ modules modules_install
 cp arch/x86/boot/bzImage /CD_root/bzImage 
 
 cd /build
@@ -29,6 +29,7 @@ cp -rf /build/initramfs/* /initramfs/
 mkdir /initramfs/proc -p
 mkdir /initramfs/tmp -p
 cd /initramfs
+chmod 000 /initramfs/etc/shadow
 find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz
 cd  /
 cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
@@ -44,3 +45,4 @@ cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isol
     -no-emul-boot \
     -boot-load-size 4 \
     -boot-info-table CD_root
+chmod 600 /initramfs/etc/shadow
