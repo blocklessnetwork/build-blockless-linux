@@ -5,8 +5,8 @@ unxz < linux-4.1.39.tar.xz | tar x
 cd linux-4.1.39 
 cp ../linux.config .config
 make oldconfig ARCH=i386 
-make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
-make INSTALL_MOD_PATH=/initramfs/ modules_install
+PATH=$TOOLSBIN:$CCBIN:$PATH make ARCH=i386 PATH=$CCBIN:$TOOLSBIN:$PATH 
+PATH=$TOOLSBIN:$CCBIN:$PATH make INSTALL_MOD_PATH=/initramfs/ modules modules_install
 cp arch/x86/boot/bzImage /CD_root/bzImage 
 
 cd /build
