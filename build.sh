@@ -29,6 +29,7 @@ cp -rf /build/initramfs/* /initramfs/
 mkdir /initramfs/proc -p
 mkdir /initramfs/tmp -p
 cd /initramfs
+chmod 000 /initramfs/etc/shadow
 find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz
 cd  /
 cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
@@ -44,3 +45,4 @@ cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isol
     -no-emul-boot \
     -boot-load-size 4 \
     -boot-info-table CD_root
+chmod 600 /initramfs/etc/shadow
