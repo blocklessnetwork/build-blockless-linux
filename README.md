@@ -9,7 +9,11 @@ make
 
 ## The linux4 insert module
 ```
-modprobe ne2k_pci
+# depmod
+```
+use depmod to generate the `modules.alias`, `modules.dep`, `modules.symbols`
+```
+# modprobe ne2k_pci
 ```
 
 The drivers will in the modules.alias file.
