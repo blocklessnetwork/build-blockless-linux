@@ -10,10 +10,11 @@ PATH=$TOOLSBIN:$CCBIN:$PATH make INSTALL_MOD_PATH=/initramfs/ modules modules_in
 cp arch/x86/boot/bzImage /CD_root/bzImage 
 
 cd /build
-bunzip2 < busybox-1.26.2.tar.bz2 | tar x
-cd busybox-1.26.2 
+gunzip < busybox-1_31_1.tar.gz | tar x
+cd busybox-1_31_1 
 cp ../busybox.config .config
-sed -i -re '295s/-1/1/' include/libbb.h
+sed -i -re '304s/-1/1/' include/libbb.h
+#sed -i -re '295s/-1/1/' include/libbb.h
 PATH=$TOOLSBIN:$PATH
 make oldconfig 
 make TGTARCH=i486 \
