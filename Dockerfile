@@ -79,6 +79,15 @@ RUN   make -C syslinux-6.03 \
 #  &&  make defconfig \
 #  &&  rm /usr/bin/cc
 
+COPY packages/bzip2-bzip2-1.0.8.tar.gz bzip2-bzip2-1.0.8.tar.gz
+RUN  gunzip < bzip2-bzip2-1.0.8.tar.gz | tar x 
+RUN ( \
+  cd bzip2-bzip2-1.0.8 \
+  && make CC=$CC LDFLAGS=-static AR=$TOOLSBIN/ar RANLIB=$TOOLSBIN/ranlib bzip2 \
+  && ./bzip2 \
+  && cp bzip2 /usr/local/bin \
+) && rm -rf bzip2-bzip2-1.0.8*
+
 COPY packages/byacc.tar.gz byacc.tar.gz
 RUN  gunzip < byacc.tar.gz | tar x
 RUN   (     cd byacc* \
@@ -268,6 +277,7 @@ RUN  gunzip < bash-4.3.30.tar.gz | tar x \
          &&  $TOOLSBIN/strip /initramfs/bin/bash \
       ) \
   &&  rm -rf /bash-4.3.30 bash-4.3.30.tar.gz
+
 
 #########################################################################################################################################################
 COPY isolinux.cfg CD_root/isolinux/
