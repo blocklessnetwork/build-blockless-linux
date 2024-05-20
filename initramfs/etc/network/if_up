@@ -1,0 +1,4 @@
+depmod
+modprobe ne2k-pci
+ifup eth0
+ifup lo
