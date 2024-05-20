@@ -32,6 +32,16 @@ mkdir /initramfs/tmp -p
 cd /initramfs
 chmod 000 /initramfs/etc/shadow
 find . | cpio -o -H newc | gzip > ../CD_root/initramfs_data.cpio.gz
+
+cat <<EOF> /initramfs/bin/if_up
+depmod
+modprobe ne2k-pci
+ifup eth0
+ifup lo
+EOF
+
+chmod +x /initramfs/bin/if_up
+
 cd  /
 cp /usr/share/syslinux/ldlinux.c32 /usr/share/syslinux/isolinux.bin CD_root/isolinux/
 /opt/schily/bin/mkisofs \
