@@ -1,0 +1,16 @@
+case $1 in
+start)
+depmod
+modprobe ne2k-pci
+ifup eth0
+ifup lo
+;;
+stop)
+ifdown eth0
+ifdown lo
+;;
+*)
+echo $"Usage: $0 {start|stop}"
+exit 2
+;;
+esac

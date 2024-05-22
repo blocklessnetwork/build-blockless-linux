@@ -1,0 +1,12 @@
+case $1 in
+start)
+telnetd
+;;
+stop)
+kill `ps -ef|grep telnetd|grep -v grep|awk '{print $1}'`
+;;
+*)
+echo $"Usage: $0 {start|stop}"
+exit 2
+;;
+esac
