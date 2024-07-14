@@ -1,0 +1,25 @@
+case $1 in
+start)
+exec 2>&1
+exec </dev/null
+
+user=www
+user=root
+
+exec \
+env - PATH="$PATH" \
+softlimit \
+tcpsvd \
+  -E -l 0 -c 40 \
+  0.0.0.0 21 \
+setuidgid "$user" \
+ftpd -t10 -w /root &
+;;
+stop)
+kill `ps -ef|grep ftpd|grep -v grep|awk '{print $1}'`
+;;
+*)
+echo $"Usage: $0 {start|stop}"
+exit 2
+;;
+esac
