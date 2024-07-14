@@ -13,7 +13,7 @@ tcpsvd \
   -E -l 0 -c 40 \
   0.0.0.0 21 \
 setuidgid "$user" \
-ftpd -t10 -w /root
+ftpd -t10 -w /root &
 ;;
 stop)
 kill `ps -ef|grep ftpd|grep -v grep|awk '{print $1}'`
